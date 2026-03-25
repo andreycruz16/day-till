@@ -1,50 +1,81 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: 1.0.0 -> 1.1.0
+- Modified principles: yes (aligned to DayTill core product values)
+- Added sections: Core Principles refined for offline-first mobile, additional constraints tuned for local storage and lightweight notifications
+- Removed sections: legacy generic placeholders replaced
+- Templates requiring updates:
+  - .specify/templates/plan-template.md (✅ reviewed, no structural change needed)
+  - .specify/templates/spec-template.md (✅ reviewed)
+  - .specify/templates/tasks-template.md (✅ reviewed)
+  - .github/agents/speckit.constitution.agent.md (✅ reviewed)
+- Follow-up TODOs: none
+-->
+
+# day-till Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### 1. Simplicity First
+Design MUST prefer minimal viable implementations and avoid overengineering. Proof-of-concept quality is acceptable for early features; iterative hardening is accepted only after user validation.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: Simplicity enables rapid experimentation and keeps scope manageable for an offline-first mobile app.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### 2. Offline-First
+The app MUST function without network connectivity. Core behavior and data access MUST work fully offline; any sync workflows are optional and degrade gracefully.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Rationale: The product promise is usable anytime, anywhere with unreliable networks.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### 3. Fast, Responsive UI
+UI interactions MUST feel instantaneous and maintain 60fps responsiveness on target devices. Busy operations MUST run off the main thread and include progress signals.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: Performance is critical for user retention and perceived quality.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### 4. Clean, Minimal UX
+User interfaces MUST be uncluttered, intuitive, and avoid unnecessary friction. Features should be discoverable through clear signposting and defaults.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: Low cognitive overhead is essential for daily planning tools.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### 5. Modular and Extensible Code
+Codebase organization MUST use small, composable modules with explicit APIs. New functionality MUST be addable with minimal changes to existing modules.
+
+Rationale: Modularity reduces maintenance cost and enables future enhancements.
+
+### 6. Core Functionality First
+Priority is assigned to a small set of core features; additional features are blocked until core scenarios are stable and verified.
+
+Rationale: Focus avoids scope creep and improves release predictability.
+
+### 7. Local Storage Persistence
+Data MUST be persisted locally using device storage (e.g., SQLite, file, local database). Persistence flows MUST be deterministic and recoverable after app restart.
+
+Rationale: No backend dependency is a key product constraint.
+
+### 8. Reliable, Lightweight Notifications
+Notifications MUST be dependable and low-overhead, using platform-appropriate local notification APIs. They MUST avoid expensive background work and preserve battery life.
+
+Rationale: Timely alerts are part of the core UX; resource efficiency preserves device usability.
+
+## Additional Constraints
+
+- Architecture: Mobile-first and offline-first with no mandatory backend; implementation SHOULD use Flutter for cross-platform consistency.
+- Storage: Local persistence in secure storage; no sensitive data sent outside device without explicit opt-in.
+- Offline behavior: No feature can require connectivity for core flows; network-dependent enhancements are opt-in.
+- Resource usage: Limit memory use and CPU spikes; keep app size reasonable for mobile environments.
+
+## Development Workflow
+
+- Branch policy: feature branches from main; short-lived with focused granular commits.
+- Review policy: PRs must include rationale tied to the core principles and a brief risk assessment.
+- CI gating: Automated tests, lint, and static checks must run; the main branch must remain green.
+- Definitions of done: Core scenarios pass on device/emulator, offline mode verified, and UX reviewed for minimality.
+- Release: Semantic tags, release notes include offline/responsiveness tests.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- The constitution is authoritative for feature trade-offs. Any deviation requires a documented decision and peer approval.
+- Amendment: Propose via issue, update this constitution file, and require one additional reviewer. Significant principle changes require team consensus.
+- Versioning: MAJOR bump on backward-incompatible governance shifts; MINOR bump on new principle or major constraint addition; PATCH for phrasing/no-op clarifications.
+- Compliance: Every plan/release must include a Constitution Check matching user stories to one or more principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.1.0 | **Ratified**: 2026-03-26 | **Last Amended**: 2026-03-26
