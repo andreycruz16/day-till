@@ -118,25 +118,6 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
-                      initialValue: _selectedDay,
-                      decoration: const InputDecoration(labelText: 'Day'),
-                      items: _availableDays.map((day) {
-                        return DropdownMenuItem<int>(
-                          value: day,
-                          child: Text(day.toString()),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-                        setState(() => _selectedDay = value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
                       initialValue: _selectedMonth,
                       decoration: const InputDecoration(labelText: 'Month'),
                       items: List.generate(12, (index) => index + 1).map((
@@ -160,31 +141,52 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedDay,
+                      decoration: const InputDecoration(labelText: 'Day'),
+                      items: _availableDays.map((day) {
+                        return DropdownMenuItem<int>(
+                          value: day,
+                          child: Text(day.toString()),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setState(() => _selectedDay = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedYear,
+                      decoration: InputDecoration(
+                        labelText: _selectedType == EventType.birthday
+                            ? 'Birth year'
+                            : 'Year',
+                      ),
+                      items: _availableYears.map((year) {
+                        return DropdownMenuItem<int>(
+                          value: year,
+                          child: Text(year.toString()),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setState(() {
+                          _selectedYear = value;
+                          _clampSelectedDay();
+                        });
+                      },
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: _selectedYear,
-                decoration: InputDecoration(
-                  labelText: _selectedType == EventType.birthday
-                      ? 'Birth year'
-                      : 'Year',
-                ),
-                items: _availableYears.map((year) {
-                  return DropdownMenuItem<int>(
-                    value: year,
-                    child: Text(year.toString()),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() {
-                    _selectedYear = value;
-                    _clampSelectedDay();
-                  });
-                },
               ),
               const SizedBox(height: 8),
               Text(
