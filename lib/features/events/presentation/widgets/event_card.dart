@@ -9,12 +9,14 @@ class EventCard extends StatelessWidget {
     super.key,
     required this.event,
     required this.daysRemaining,
+    required this.nextOccurrence,
     required this.onTap,
     required this.onDelete,
   });
 
   final Event event;
   final int daysRemaining;
+  final DateTime nextOccurrence;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
@@ -23,9 +25,21 @@ class EventCard extends StatelessWidget {
     final isPast = daysRemaining < 0;
     final countdownLabel = switch (daysRemaining) {
       0 => 'Today',
-      1 => '1 day',
+      1 => 'Tomorrow',
       _ when daysRemaining < 0 => '${daysRemaining.abs()} days ago',
       _ => '$daysRemaining days',
+    };
+    final primaryDateLabel = switch (event.type) {
+      EventType.birthday =>
+        'Date of birth: ${DateFormat.yMMMMd().format(event.date)}',
+      EventType.general => DateFormat.yMMMMd().format(event.date),
+    };
+    final secondaryDateLabel = switch (event.type) {
+      EventType.birthday =>
+        'Next: ${DateFormat.yMMMMd().format(nextOccurrence)}',
+      EventType.general when !isSameCalendarDate(event.date, nextOccurrence) =>
+        'Next: ${DateFormat.yMMMMd().format(nextOccurrence)}',
+      _ => null,
     };
 
     return Card(
@@ -54,9 +68,19 @@ class EventCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      DateFormat.yMMMMd().format(event.date),
+                      primaryDateLabel,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    if (secondaryDateLabel != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        secondaryDateLabel,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                     if (event.notes case final notes?) ...[
                       const SizedBox(height: 8),
                       Text(
@@ -100,6 +124,10 @@ class EventCard extends StatelessWidget {
       ),
     );
   }
+}
+
+bool isSameCalendarDate(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 class _TypeChip extends StatelessWidget {

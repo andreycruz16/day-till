@@ -14,6 +14,12 @@ import '../../domain/services/countdown_service.dart';
 
 final countdownServiceProvider = Provider((ref) => const CountdownService());
 
+enum EventListFilter { all, birthdays, events }
+
+final eventListFilterProvider = StateProvider<EventListFilter>(
+  (ref) => EventListFilter.all,
+);
+
 final eventRepositoryProvider = Provider<EventRepository>((ref) {
   final box = Hive.box<EventModel>('events');
   final notifications = ref.watch(localNotificationServiceProvider);

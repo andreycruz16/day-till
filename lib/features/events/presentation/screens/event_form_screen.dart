@@ -94,7 +94,14 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 borderRadius: BorderRadius.circular(12),
                 onTap: _pickDate,
                 child: InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Date'),
+                  decoration: InputDecoration(
+                    labelText: _selectedType == EventType.birthday
+                        ? 'Date of birth'
+                        : 'Date',
+                    helperText: _selectedType == EventType.birthday
+                        ? 'Used to calculate the next birthday countdown'
+                        : null,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
