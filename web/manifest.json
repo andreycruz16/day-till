@@ -1,6 +1,6 @@
 {
-    "name": "day_till",
-    "short_name": "day_till",
+    "name": "Day Till",
+    "short_name": "Day Till",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

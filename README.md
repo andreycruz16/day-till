@@ -1,4 +1,4 @@
-# day_till
+# Day Till
 
 A new Flutter project.
 

@@ -21,24 +21,32 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _notesController;
 
-  late DateTime _selectedDate;
   late EventType _selectedType;
   late ReminderOption _selectedReminder;
   late bool _notificationsEnabled;
+  late int _selectedDay;
+  late int _selectedMonth;
+  late int _selectedYear;
   bool _isSaving = false;
 
   bool get _isEditing => widget.event != null;
+  DateTime get _selectedDate =>
+      DateTime(_selectedYear, _selectedMonth, _selectedDay);
 
   @override
   void initState() {
     super.initState();
     final event = widget.event;
+    final initialDate =
+        event?.date ?? DateTime.now().add(const Duration(days: 1));
     _titleController = TextEditingController(text: event?.title ?? '');
     _notesController = TextEditingController(text: event?.notes ?? '');
-    _selectedDate = event?.date ?? DateTime.now().add(const Duration(days: 1));
     _selectedType = event?.type ?? EventType.general;
     _selectedReminder = event?.reminder ?? ReminderOption.none;
     _notificationsEnabled = event?.notificationsEnabled ?? false;
+    _selectedDay = initialDate.day;
+    _selectedMonth = initialDate.month;
+    _selectedYear = initialDate.year;
   }
 
   @override
@@ -86,30 +94,102 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   if (value == null) {
                     return;
                   }
-                  setState(() => _selectedType = value);
+                  setState(() {
+                    _selectedType = value;
+                    _clampSelectedYear();
+                    _clampSelectedDay();
+                  });
                 },
               ),
               const SizedBox(height: 16),
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _pickDate,
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: _selectedType == EventType.birthday
-                        ? 'Date of birth'
-                        : 'Date',
-                    helperText: _selectedType == EventType.birthday
-                        ? 'Used to calculate the next birthday countdown'
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(DateFormat.yMMMMd().format(_selectedDate)),
-                      const Icon(Icons.calendar_today_rounded),
-                    ],
-                  ),
+              Text(
+                _selectedType == EventType.birthday ? 'Date of birth' : 'Date',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (_selectedType == EventType.birthday) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Used to calculate the next birthday countdown',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedDay,
+                      decoration: const InputDecoration(labelText: 'Day'),
+                      items: _availableDays.map((day) {
+                        return DropdownMenuItem<int>(
+                          value: day,
+                          child: Text(day.toString()),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setState(() => _selectedDay = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedMonth,
+                      decoration: const InputDecoration(labelText: 'Month'),
+                      items: List.generate(12, (index) => index + 1).map((
+                        month,
+                      ) {
+                        return DropdownMenuItem<int>(
+                          value: month,
+                          child: Text(
+                            DateFormat.MMMM().format(DateTime(2026, month)),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setState(() {
+                          _selectedMonth = value;
+                          _clampSelectedDay();
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: _selectedYear,
+                decoration: InputDecoration(
+                  labelText: _selectedType == EventType.birthday
+                      ? 'Birth year'
+                      : 'Year',
+                ),
+                items: _availableYears.map((year) {
+                  return DropdownMenuItem<int>(
+                    value: year,
+                    child: Text(year.toString()),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedYear = value;
+                    _clampSelectedDay();
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Selected: ${DateFormat.yMMMMd().format(_selectedDate)}',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -168,16 +248,31 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
-    );
+  List<int> get _availableDays {
+    final lastDay = DateUtils.getDaysInMonth(_selectedYear, _selectedMonth);
+    return List<int>.generate(lastDay, (index) => index + 1);
+  }
 
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
+  List<int> get _availableYears {
+    final currentYear = DateTime.now().year;
+    final startYear = _selectedType == EventType.birthday
+        ? 1900
+        : currentYear - 5;
+    final endYear = _selectedType == EventType.birthday ? currentYear : 2100;
+    return [for (var year = endYear; year >= startYear; year--) year];
+  }
+
+  void _clampSelectedDay() {
+    final maxDay = DateUtils.getDaysInMonth(_selectedYear, _selectedMonth);
+    if (_selectedDay > maxDay) {
+      _selectedDay = maxDay;
+    }
+  }
+
+  void _clampSelectedYear() {
+    final years = _availableYears;
+    if (!years.contains(_selectedYear)) {
+      _selectedYear = years.first;
     }
   }
 
