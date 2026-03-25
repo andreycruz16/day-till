@@ -22,6 +22,9 @@ void main() {
       type: EventType.birthday,
       reminder: ReminderOption.none,
       notificationsEnabled: false,
+      reminderHour: 6,
+      reminderMinute: 0,
+      isDateYearKnown: true,
       notes: '  buy cake  ',
     );
 
@@ -39,6 +42,9 @@ void main() {
       type: EventType.general,
       reminder: ReminderOption.none,
       notificationsEnabled: false,
+      reminderHour: 6,
+      reminderMinute: 0,
+      isDateYearKnown: true,
     );
     await notifier.saveEvent(
       title: 'Near Event',
@@ -46,6 +52,9 @@ void main() {
       type: EventType.general,
       reminder: ReminderOption.none,
       notificationsEnabled: false,
+      reminderHour: 6,
+      reminderMinute: 0,
+      isDateYearKnown: true,
     );
 
     expect(notifier.state.map((event) => event.title), [
@@ -61,6 +70,9 @@ void main() {
       type: EventType.general,
       reminder: ReminderOption.none,
       notificationsEnabled: false,
+      reminderHour: 6,
+      reminderMinute: 0,
+      isDateYearKnown: true,
     );
 
     final eventId = notifier.state.single.id;

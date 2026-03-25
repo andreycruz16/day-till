@@ -67,6 +67,8 @@ class LocalNotificationService {
       title: event.title,
       body: _eventDayBody(event),
       scheduledDate: event.nextOccurrence,
+      hour: event.reminderHour,
+      minute: event.reminderMinute,
     );
 
     final reminderDate = event.reminderDate;
@@ -80,6 +82,8 @@ class LocalNotificationService {
       title: 'Upcoming: ${event.title}',
       body: _reminderBody(event.reminder),
       scheduledDate: reminderDate,
+      hour: event.reminderHour,
+      minute: event.reminderMinute,
     );
   }
 
@@ -93,13 +97,16 @@ class LocalNotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    required int hour,
+    required int minute,
   }) async {
     final now = DateTime.now();
     final scheduleAt = DateTime(
       scheduledDate.year,
       scheduledDate.month,
       scheduledDate.day,
-      9,
+      hour,
+      minute,
     );
     if (!scheduleAt.isAfter(now)) {
       return;
@@ -146,6 +153,9 @@ class LocalNotificationService {
       ReminderOption.sameDay => 'Happening today.',
       ReminderOption.oneDayBefore => 'Happening tomorrow.',
       ReminderOption.threeDaysBefore => 'Only 3 days left.',
+      ReminderOption.oneWeekBefore => 'Only 1 week left.',
+      ReminderOption.twoWeeksBefore => 'Only 2 weeks left.',
+      ReminderOption.oneMonthBefore => 'Only 1 month left.',
     };
   }
 }

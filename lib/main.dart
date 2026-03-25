@@ -15,6 +15,7 @@ Future<void> main() async {
     ..registerAdapter(ReminderOptionAdapter())
     ..registerAdapter(EventModelAdapter());
   await Hive.openBox<EventModel>('events');
+  await Hive.openBox<dynamic>('settings');
 
   final notifications = LocalNotificationService();
   await notifications.initialize();

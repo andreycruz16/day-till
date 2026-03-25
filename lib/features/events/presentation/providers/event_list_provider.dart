@@ -14,6 +14,14 @@ import '../../domain/services/countdown_service.dart';
 
 final countdownServiceProvider = Provider((ref) => const CountdownService());
 
+final clockProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now();
+  while (true) {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    yield DateTime.now();
+  }
+});
+
 enum EventListFilter { all, birthdays, events }
 
 final eventListFilterProvider = StateProvider<EventListFilter>(
@@ -47,6 +55,9 @@ class EventListNotifier extends StateNotifier<List<Event>> {
     required EventType type,
     required ReminderOption reminder,
     required bool notificationsEnabled,
+    required int reminderHour,
+    required int reminderMinute,
+    required bool isDateYearKnown,
     String? notes,
     Event? existing,
   }) async {
@@ -63,6 +74,9 @@ class EventListNotifier extends StateNotifier<List<Event>> {
           type: type,
           reminder: reminder,
           notificationsEnabled: notificationsEnabled,
+          reminderHour: reminderHour,
+          reminderMinute: reminderMinute,
+          isDateYearKnown: isDateYearKnown,
           updatedAt: now,
           notes: normalizedNotes,
           clearNotes: normalizedNotes == null,
@@ -76,6 +90,9 @@ class EventListNotifier extends StateNotifier<List<Event>> {
           notificationsEnabled: notificationsEnabled,
           createdAt: now,
           updatedAt: now,
+          reminderHour: reminderHour,
+          reminderMinute: reminderMinute,
+          isDateYearKnown: isDateYearKnown,
           notes: normalizedNotes,
         );
 

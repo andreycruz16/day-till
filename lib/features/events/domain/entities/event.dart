@@ -11,6 +11,9 @@ class Event {
     required this.notificationsEnabled,
     required this.createdAt,
     required this.updatedAt,
+    this.reminderHour = 6,
+    this.reminderMinute = 0,
+    this.isDateYearKnown = true,
     this.notes,
   });
 
@@ -22,6 +25,9 @@ class Event {
   final bool notificationsEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int reminderHour;
+  final int reminderMinute;
+  final bool isDateYearKnown;
   final String? notes;
 
   Event copyWith({
@@ -33,6 +39,9 @@ class Event {
     bool? notificationsEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? reminderHour,
+    int? reminderMinute,
+    bool? isDateYearKnown,
     String? notes,
     bool clearNotes = false,
   }) {
@@ -45,6 +54,9 @@ class Event {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      reminderHour: reminderHour ?? this.reminderHour,
+      reminderMinute: reminderMinute ?? this.reminderMinute,
+      isDateYearKnown: isDateYearKnown ?? this.isDateYearKnown,
       notes: clearNotes ? null : notes ?? this.notes,
     );
   }
@@ -70,5 +82,12 @@ class Event {
     }
 
     return nextOccurrence.subtract(Duration(days: reminder.daysBefore!));
+  }
+
+  int? ageOnNextOccurrence() {
+    if (type != EventType.birthday || !isDateYearKnown) {
+      return null;
+    }
+    return nextOccurrence.year - date.year;
   }
 }

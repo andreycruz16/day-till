@@ -90,6 +90,9 @@ Event _sampleEvent({
     notificationsEnabled: notificationsEnabled,
     createdAt: DateTime(2026, 3, 26),
     updatedAt: DateTime(2026, 3, 26),
+    reminderHour: 6,
+    reminderMinute: 0,
+    isDateYearKnown: true,
   );
 }
 

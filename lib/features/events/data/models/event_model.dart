@@ -14,6 +14,9 @@ class EventModel extends HiveObject {
     required this.notificationsEnabled,
     required this.createdAt,
     required this.updatedAt,
+    required this.reminderHour,
+    required this.reminderMinute,
+    required this.isDateYearKnown,
     this.notes,
   });
 
@@ -25,6 +28,9 @@ class EventModel extends HiveObject {
   final bool notificationsEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int reminderHour;
+  final int reminderMinute;
+  final bool isDateYearKnown;
   final String? notes;
 
   factory EventModel.fromDomain(Event event) {
@@ -37,6 +43,9 @@ class EventModel extends HiveObject {
       notificationsEnabled: event.notificationsEnabled,
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
+      reminderHour: event.reminderHour,
+      reminderMinute: event.reminderMinute,
+      isDateYearKnown: event.isDateYearKnown,
       notes: event.notes,
     );
   }
@@ -51,6 +60,9 @@ class EventModel extends HiveObject {
       notificationsEnabled: notificationsEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      reminderHour: reminderHour,
+      reminderMinute: reminderMinute,
+      isDateYearKnown: isDateYearKnown,
       notes: notes,
     );
   }
@@ -107,14 +119,29 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       notificationsEnabled: fields[5] as bool,
       createdAt: fields[6] as DateTime,
       updatedAt: fields[7] as DateTime,
-      notes: fields[8] as String?,
+      reminderHour: fields[8] is int ? fields[8] as int : 6,
+      reminderMinute: fields[9] is int ? fields[9] as int : 0,
+      isDateYearKnown: fields[10] is bool
+          ? fields[10] as bool
+          : fields[8] is bool
+          ? fields[8] as bool
+          : true,
+      notes:
+          fields[11] as String? ??
+          (fields[10] is String
+              ? fields[10] as String?
+              : fields[8] is String
+              ? fields[8] as String?
+              : fields[9] is String
+              ? fields[9] as String?
+              : null),
     );
   }
 
   @override
   void write(BinaryWriter writer, EventModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -132,6 +159,12 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       ..writeByte(7)
       ..write(obj.updatedAt)
       ..writeByte(8)
+      ..write(obj.reminderHour)
+      ..writeByte(9)
+      ..write(obj.reminderMinute)
+      ..writeByte(10)
+      ..write(obj.isDateYearKnown)
+      ..writeByte(11)
       ..write(obj.notes);
   }
 }

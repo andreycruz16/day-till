@@ -24,6 +24,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   late EventType _selectedType;
   late ReminderOption _selectedReminder;
   late bool _notificationsEnabled;
+  late bool _isBirthYearKnown;
+  late TimeOfDay _selectedReminderTime;
   late int _selectedDay;
   late int _selectedMonth;
   late int _selectedYear;
@@ -31,7 +33,11 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
 
   bool get _isEditing => widget.event != null;
   DateTime get _selectedDate =>
-      DateTime(_selectedYear, _selectedMonth, _selectedDay);
+      DateTime(_effectiveYear, _selectedMonth, _selectedDay);
+
+  int get _effectiveYear => _isBirthdayWithoutYear ? 2000 : _selectedYear;
+  bool get _isBirthdayWithoutYear =>
+      _selectedType == EventType.birthday && !_isBirthYearKnown;
 
   @override
   void initState() {
@@ -42,8 +48,17 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     _titleController = TextEditingController(text: event?.title ?? '');
     _notesController = TextEditingController(text: event?.notes ?? '');
     _selectedType = event?.type ?? EventType.general;
-    _selectedReminder = event?.reminder ?? ReminderOption.none;
     _notificationsEnabled = event?.notificationsEnabled ?? false;
+    final initialReminder = event?.reminder ?? ReminderOption.none;
+    _selectedReminder =
+        _notificationsEnabled && initialReminder == ReminderOption.none
+        ? ReminderOption.sameDay
+        : initialReminder;
+    _selectedReminderTime = TimeOfDay(
+      hour: event?.reminderHour ?? 6,
+      minute: event?.reminderMinute ?? 0,
+    );
+    _isBirthYearKnown = event?.isDateYearKnown ?? true;
     _selectedDay = initialDate.day;
     _selectedMonth = initialDate.month;
     _selectedYear = initialDate.year;
@@ -112,6 +127,23 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   'Used to calculate the next birthday countdown',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                const SizedBox(height: 8),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('I know the birth year'),
+                  value: _isBirthYearKnown,
+                  onChanged: (value) {
+                    setState(() {
+                      _isBirthYearKnown = value;
+                      if (!value) {
+                        _selectedYear = DateTime.now().year;
+                      } else {
+                        _clampSelectedYear();
+                      }
+                      _clampSelectedDay();
+                    });
+                  },
+                ),
               ],
               const SizedBox(height: 12),
               Row(
@@ -160,37 +192,39 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _selectedYear,
-                      decoration: InputDecoration(
-                        labelText: _selectedType == EventType.birthday
-                            ? 'Birth year'
-                            : 'Year',
+                  if (!_isBirthdayWithoutYear) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _selectedYear,
+                        decoration: InputDecoration(
+                          labelText: _selectedType == EventType.birthday
+                              ? 'Birth year'
+                              : 'Year',
+                        ),
+                        items: _availableYears.map((year) {
+                          return DropdownMenuItem<int>(
+                            value: year,
+                            child: Text(year.toString()),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() {
+                            _selectedYear = value;
+                            _clampSelectedDay();
+                          });
+                        },
                       ),
-                      items: _availableYears.map((year) {
-                        return DropdownMenuItem<int>(
-                          value: year,
-                          child: Text(year.toString()),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-                        setState(() {
-                          _selectedYear = value;
-                          _clampSelectedDay();
-                        });
-                      },
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                'Selected: ${DateFormat.yMMMMd().format(_selectedDate)}',
+                'Selected: ${_selectedDateLabel()}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -213,7 +247,11 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                 onChanged: (value) {
                   setState(() {
                     _notificationsEnabled = value;
-                    if (!value) {
+                    if (value) {
+                      if (_selectedReminder == ReminderOption.none) {
+                        _selectedReminder = ReminderOption.sameDay;
+                      }
+                    } else {
                       _selectedReminder = ReminderOption.none;
                     }
                   });
@@ -221,9 +259,16 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<ReminderOption>(
-                initialValue: _selectedReminder,
+                key: ValueKey(
+                  '${_notificationsEnabled}_${_selectedReminder.name}',
+                ),
+                initialValue: _notificationsEnabled
+                    ? (_selectedReminder == ReminderOption.none
+                          ? ReminderOption.sameDay
+                          : _selectedReminder)
+                    : null,
                 decoration: const InputDecoration(labelText: 'Reminder'),
-                items: ReminderOption.values.map((reminder) {
+                items: _availableReminderOptions.map((reminder) {
                   return DropdownMenuItem(
                     value: reminder,
                     child: Text(reminder.label),
@@ -238,6 +283,21 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                       }
                     : null,
               ),
+              if (_notificationsEnabled) ...[
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Reminder time'),
+                  subtitle: Text(_formatReminderTime(context)),
+                  trailing: const Icon(Icons.schedule_outlined),
+                  onTap: _pickReminderTime,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Reminder options include same day, 1 day, 3 days, 1 week, 2 weeks, and 1 month before.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _isSaving ? null : _save,
@@ -251,7 +311,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   }
 
   List<int> get _availableDays {
-    final lastDay = DateUtils.getDaysInMonth(_selectedYear, _selectedMonth);
+    final lastDay = DateUtils.getDaysInMonth(_effectiveYear, _selectedMonth);
     return List<int>.generate(lastDay, (index) => index + 1);
   }
 
@@ -264,8 +324,17 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     return [for (var year = endYear; year >= startYear; year--) year];
   }
 
+  List<ReminderOption> get _availableReminderOptions {
+    if (!_notificationsEnabled) {
+      return const [];
+    }
+    return ReminderOption.values
+        .where((option) => option != ReminderOption.none)
+        .toList();
+  }
+
   void _clampSelectedDay() {
-    final maxDay = DateUtils.getDaysInMonth(_selectedYear, _selectedMonth);
+    final maxDay = DateUtils.getDaysInMonth(_effectiveYear, _selectedMonth);
     if (_selectedDay > maxDay) {
       _selectedDay = maxDay;
     }
@@ -296,6 +365,11 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
           type: _selectedType,
           reminder: reminder,
           notificationsEnabled: _notificationsEnabled,
+          reminderHour: _selectedReminderTime.hour,
+          reminderMinute: _selectedReminderTime.minute,
+          isDateYearKnown: _selectedType == EventType.birthday
+              ? _isBirthYearKnown
+              : true,
           notes: _notesController.text,
           existing: widget.event,
         );
@@ -312,5 +386,36 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       EventType.birthday => 'Birthday',
       EventType.general => 'General event',
     };
+  }
+
+  String _selectedDateLabel() {
+    if (_isBirthdayWithoutYear) {
+      return DateFormat.MMMMd().format(
+        DateTime(2000, _selectedMonth, _selectedDay),
+      );
+    }
+    return DateFormat.yMMMMd().format(_selectedDate);
+  }
+
+  Future<void> _pickReminderTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedReminderTime,
+    );
+
+    if (picked != null) {
+      setState(() => _selectedReminderTime = picked);
+    }
+  }
+
+  String _formatReminderTime(BuildContext context) {
+    final time = DateTime(
+      2000,
+      1,
+      1,
+      _selectedReminderTime.hour,
+      _selectedReminderTime.minute,
+    );
+    return DateFormat.jm().format(time);
   }
 }

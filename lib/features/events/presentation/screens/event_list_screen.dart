@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../settings/presentation/providers/theme_mode_provider.dart';
 import '../../domain/entities/event.dart';
 import '../../domain/entities/event_type.dart';
 import '../providers/event_list_provider.dart';
@@ -14,70 +16,99 @@ class EventListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final events = ref.watch(eventListProvider);
     final filter = ref.watch(eventListFilterProvider);
+    final hideCompleted = ref.watch(hideCompletedEventsProvider);
     final countdownService = ref.watch(countdownServiceProvider);
-    final filteredEvents = switch (filter) {
+    final now = ref.watch(clockProvider).value ?? DateTime.now();
+    var filteredEvents = switch (filter) {
       EventListFilter.all => events,
       EventListFilter.birthdays =>
         events.where((event) => event.type == EventType.birthday).toList(),
       EventListFilter.events =>
         events.where((event) => event.type == EventType.general).toList(),
     };
+    if (hideCompleted) {
+      filteredEvents = filteredEvents.where((event) {
+        return countdownService.daysRemaining(event, now) >= 0;
+      }).toList();
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('DayTill')),
+      appBar: AppBar(
+        title: const Text('Day Till'),
+        actions: [
+          IconButton(
+            onPressed: () => _openSettings(context),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+          ),
+        ],
+      ),
       body: SafeArea(
         child: events.isEmpty
             ? const _EmptyState()
-            : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: EventListFilter.values.map((value) {
-                          return ChoiceChip(
-                            label: Text(_filterLabel(value)),
-                            selected: filter == value,
-                            onSelected: (_) {
-                              ref.read(eventListFilterProvider.notifier).state =
-                                  value;
-                            },
-                          );
-                        }).toList(),
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: EventListFilter.values.map((value) {
+                            return ChoiceChip(
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              label: Text(_filterLabel(value)),
+                              selected: filter == value,
+                              onSelected: (_) {
+                                ref
+                                        .read(eventListFilterProvider.notifier)
+                                        .state =
+                                    value;
+                              },
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ),
-                  Expanded(
-                    child: filteredEvents.isEmpty
-                        ? _FilteredEmptyState(filter: filter)
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                            itemCount: filteredEvents.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final event = filteredEvents[index];
-                              final now = DateTime.now();
-                              return EventCard(
-                                event: event,
-                                daysRemaining: countdownService.daysRemaining(
-                                  event,
-                                  now,
-                                ),
-                                nextOccurrence: countdownService.nextOccurrence(
-                                  event,
-                                  now,
-                                ),
-                                onTap: () => _openForm(context, event: event),
-                                onDelete: () =>
-                                    _confirmDelete(context, ref, event),
-                              );
-                            },
-                          ),
-                  ),
+                  if (filteredEvents.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _FilteredEmptyState(
+                        filter: filter,
+                        hideCompleted: hideCompleted,
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 92),
+                      sliver: SliverList.separated(
+                        itemCount: filteredEvents.length,
+                        itemBuilder: (context, index) {
+                          final event = filteredEvents[index];
+                          return EventCard(
+                            event: event,
+                            daysRemaining: countdownService.daysRemaining(
+                              event,
+                              now,
+                            ),
+                            activeCountdown: countdownService
+                                .formatActiveCountdown(event, now),
+                            nextOccurrence: countdownService.nextOccurrence(
+                              event,
+                              now,
+                            ),
+                            onTap: () => _openForm(context, event: event),
+                            onDelete: () => _confirmDelete(context, ref, event),
+                          );
+                        },
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      ),
+                    ),
                 ],
               ),
       ),
@@ -93,6 +124,12 @@ class EventListScreen extends ConsumerWidget {
     return Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => EventFormScreen(event: event)));
+  }
+
+  Future<void> _openSettings(BuildContext context) {
+    return Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   Future<void> _confirmDelete(
@@ -175,17 +212,23 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _FilteredEmptyState extends StatelessWidget {
-  const _FilteredEmptyState({required this.filter});
+  const _FilteredEmptyState({
+    required this.filter,
+    required this.hideCompleted,
+  });
 
   final EventListFilter filter;
+  final bool hideCompleted;
 
   @override
   Widget build(BuildContext context) {
-    final message = switch (filter) {
-      EventListFilter.all => 'No events yet.',
-      EventListFilter.birthdays => 'No birthdays added yet.',
-      EventListFilter.events => 'No general events added yet.',
-    };
+    final message = hideCompleted
+        ? 'No matching upcoming events.'
+        : switch (filter) {
+            EventListFilter.all => 'No events yet.',
+            EventListFilter.birthdays => 'No birthdays added yet.',
+            EventListFilter.events => 'No general events added yet.',
+          };
 
     return Center(
       child: Padding(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../domain/entities/event.dart';
+import '../../domain/entities/reminder_option.dart';
 import '../../domain/entities/event_type.dart';
 
 class EventCard extends StatelessWidget {
@@ -9,6 +10,7 @@ class EventCard extends StatelessWidget {
     super.key,
     required this.event,
     required this.daysRemaining,
+    required this.activeCountdown,
     required this.nextOccurrence,
     required this.onTap,
     required this.onDelete,
@@ -16,6 +18,7 @@ class EventCard extends StatelessWidget {
 
   final Event event;
   final int daysRemaining;
+  final String activeCountdown;
   final DateTime nextOccurrence;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -23,6 +26,7 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPast = daysRemaining < 0;
+    final nextAge = event.ageOnNextOccurrence();
     final countdownLabel = switch (daysRemaining) {
       0 => 'Today',
       1 => 'Tomorrow',
@@ -31,12 +35,16 @@ class EventCard extends StatelessWidget {
     };
     final primaryDateLabel = switch (event.type) {
       EventType.birthday =>
-        'Date of birth: ${DateFormat.yMMMMd().format(event.date)}',
+        event.isDateYearKnown
+            ? 'Date of birth: ${DateFormat.yMMMMd().format(event.date)}'
+            : 'Birthday: ${DateFormat.MMMMd().format(event.date)}',
       EventType.general => DateFormat.yMMMMd().format(event.date),
     };
     final secondaryDateLabel = switch (event.type) {
       EventType.birthday =>
-        'Next: ${DateFormat.yMMMMd().format(nextOccurrence)}',
+        event.isDateYearKnown
+            ? 'Next: ${DateFormat.yMMMMd().format(nextOccurrence)}${nextAge == null ? '' : ' • Turns $nextAge'}'
+            : 'Next: ${DateFormat.MMMMd().format(nextOccurrence)}',
       EventType.general when !isSameCalendarDate(event.date, nextOccurrence) =>
         'Next: ${DateFormat.yMMMMd().format(nextOccurrence)}',
       _ => null,
@@ -47,32 +55,38 @@ class EventCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 6,
+                      runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           event.title,
-                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                         _TypeChip(type: event.type),
+                        if (event.notificationsEnabled &&
+                            event.reminder != ReminderOption.none)
+                          _ReminderChip(reminderLabel: event.reminder.label),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       primaryDateLabel,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                     if (secondaryDateLabel != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         secondaryDateLabel,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -82,10 +96,10 @@ class EventCard extends StatelessWidget {
                       ),
                     ],
                     if (event.notes case final notes?) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         notes,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
@@ -93,25 +107,40 @@ class EventCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   IconButton(
                     onPressed: onDelete,
                     visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     icon: const Icon(Icons.delete_outline_rounded),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     countdownLabel,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: isPast
                           ? Theme.of(context).colorScheme.error
                           : Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    activeCountdown,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   Text(
                     isPast ? 'Completed' : 'Remaining',
                     style: Theme.of(context).textTheme.labelMedium,
@@ -137,9 +166,18 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, backgroundColor) = switch (type) {
-      EventType.birthday => ('Birthday', const Color(0xFFF7D8B5)),
-      EventType.general => ('Event', const Color(0xFFD5E8E3)),
+    final colorScheme = Theme.of(context).colorScheme;
+    final (label, backgroundColor, foregroundColor) = switch (type) {
+      EventType.birthday => (
+        'Birthday',
+        colorScheme.tertiaryContainer,
+        colorScheme.onTertiaryContainer,
+      ),
+      EventType.general => (
+        'Event',
+        colorScheme.secondaryContainer,
+        colorScheme.onSecondaryContainer,
+      ),
     };
 
     return DecoratedBox(
@@ -148,8 +186,49 @@ class _TypeChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReminderChip extends StatelessWidget {
+  const _ReminderChip({required this.reminderLabel});
+
+  final String reminderLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.notifications_active_outlined,
+              size: 12,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              reminderLabel,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
