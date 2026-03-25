@@ -2,68 +2,76 @@
 
 ## Overview
 
-DayTill is a lightweight Flutter mobile app for tracking upcoming events and birthdays. Users can create personal events, see how many days remain until each event, and receive local notifications on the event date with an optional reminder before it occurs.
+Day Till is an offline-first Flutter mobile app for tracking upcoming events and birthdays. Users can create personal countdown items, see live time remaining, and receive local reminders without any backend or account system.
 
-This project is a proof of concept (POC) focused on fast local performance, simple UX, and fully offline operation.
+The current implementation is still POC-sized, but it now includes more product polish than the initial draft: dark mode, homepage filtering, birthday age display, optional unknown birth year, configurable reminder lead time, and configurable reminder time.
 
 ## Goals
 
-- Let users create, edit, and delete countdown events.
-- Show clear day-based countdowns for each event.
-- Support two event types: `birthday` and `general`.
-- Trigger local notifications without any backend dependency.
-- Keep the app simple, responsive, and easy to maintain.
+- Let users create, edit, and delete countdown items quickly.
+- Show upcoming events and birthdays in a compact, readable list.
+- Keep all data local to the device using Hive.
+- Schedule local reminders with no server dependency.
+- Keep the app simple enough to maintain as a solo or small-team Flutter project.
 
 ## Non-Goals
 
-- User accounts or cloud sync.
-- Shared calendars or collaboration features.
-- Complex recurrence rules beyond birthday behavior.
-- Push notifications or server-side scheduling.
-
-## Users
-
-- People tracking birthdays for friends and family.
-- People tracking personal milestones, deadlines, or trips.
-- Users who want a simple countdown app without sign-in.
+- User accounts or cloud sync
+- Shared calendars or collaborative lists
+- Backend APIs or remote notifications
+- Complex recurring rules beyond birthday handling
 
 ## Core Use Cases
 
 ### Create Event
 
-User enters a title, date, event type, and optional reminder preference. The app saves the event locally and schedules a notification if enabled.
+User creates a `general event` or `birthday`, fills in the required date fields, optionally enables reminders, and saves. The event is stored locally and notifications are scheduled if enabled.
 
-### View Countdown
+### Track Countdown
 
-User opens the app and sees a list of saved events sorted by nearest upcoming date, each with remaining days.
+User opens the home screen and sees a filtered list of saved items ordered by nearest upcoming date. Each card shows a day-based label plus an active countdown string.
 
-### Edit Event
+### Manage Birthday Details
 
-User updates event details. The app persists the changes and refreshes any scheduled local notifications.
+User can mark a birthday with or without a known birth year. If the year is known, the app also shows the next age to be reached.
 
-### Delete Event
+### Manage Settings
 
-User removes an event. The app deletes the record and cancels any associated scheduled notifications.
+User can enable dark mode and choose whether completed events should be hidden from the homepage.
+
+## Current Feature Scope
+
+- Create, edit, and delete events
+- Event types: `birthday` and `general`
+- Birthday countdown based on next yearly occurrence
+- Optional unknown birth year for birthdays
+- Birthday age display when birth year is known
+- Local reminders with selectable lead time
+- Reminder time selection, defaulting to `6:00 AM`
+- Live countdown text updated on a shared timer
+- Homepage filter chips: `All`, `Birthdays`, `Events`
+- Settings for dark mode and hide completed events
 
 ## Success Criteria
 
-- App launches to usable content in under 2 seconds on a typical mid-range device.
-- All primary features work without network access.
-- Event CRUD operations feel immediate.
-- Notifications fire reliably on-device for supported platforms.
+- App launches and loads local data quickly on a typical mobile device.
+- CRUD operations update the homepage immediately.
+- Notifications schedule and cancel correctly for enabled reminders.
+- Homepage remains usable with a modest personal dataset.
+- All primary flows work fully offline.
 
 ## Constraints
 
-- Flutter mobile app only.
-- Offline-first architecture.
-- Local persistence via Hive.
-- State management via Riverpod.
-- Local reminders via `flutter_local_notifications`.
+- Flutter mobile-first app
+- Offline-only architecture
+- Local persistence via Hive
+- State management via Riverpod
+- Local reminders via `flutter_local_notifications`
 
 ## Future Enhancements
 
-- Search and filtering by event type.
-- Home screen widgets.
-- Theme customization.
-- Import/export of local data.
-- Optional yearly reminder enhancements for birthdays.
+- Search and sort controls
+- Better notification reliability UX and test notification action
+- Backup/restore or export/import
+- Calendar or agenda-style views
+- Home screen widgets

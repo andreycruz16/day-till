@@ -4,19 +4,19 @@
 
 ### Event
 
-Represents a countdown item stored locally on device.
+Represents a countdown item stored locally on the device.
 
 ```dart
-enum EventType {
-  birthday,
-  general,
-}
+enum EventType { birthday, general }
 
 enum ReminderOption {
   none,
   sameDay,
   oneDayBefore,
   threeDaysBefore,
+  oneWeekBefore,
+  twoWeeksBefore,
+  oneMonthBefore,
 }
 
 class Event {
@@ -24,127 +24,143 @@ class Event {
   final String title;
   final DateTime date;
   final EventType type;
-  final String? notes;
   final ReminderOption reminder;
   final bool notificationsEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int reminderHour;
+  final int reminderMinute;
+  final bool isDateYearKnown;
+  final String? notes;
 
   const Event({
     required this.id,
     required this.title,
     required this.date,
     required this.type,
-    this.notes,
     required this.reminder,
     required this.notificationsEnabled,
     required this.createdAt,
     required this.updatedAt,
+    this.reminderHour = 6,
+    this.reminderMinute = 0,
+    this.isDateYearKnown = true,
+    this.notes,
   });
 }
 ```
 
+## Important Modeling Rules
+
+- `date` always stores a valid `DateTime`.
+- For birthdays with unknown year, the app still stores a placeholder year internally, but `isDateYearKnown = false`.
+- Reminder time is stored as `reminderHour` and `reminderMinute`.
+- Age is only derived when the birthday year is known.
+
 ## Persistence Model
 
-Hive stores a serialized event record. For this POC, one box named `events` is sufficient.
+For the current app, Hive uses:
+
+- `events` box for event records
+- `settings` box for UI preferences
+
+Example event persistence shape:
 
 ```dart
-@HiveType(typeId: 0)
 class EventModel extends HiveObject {
-  @HiveField(0)
-  String id;
-
-  @HiveField(1)
-  String title;
-
-  @HiveField(2)
-  DateTime date;
-
-  @HiveField(3)
-  int typeIndex;
-
-  @HiveField(4)
-  String? notes;
-
-  @HiveField(5)
-  int reminderIndex;
-
-  @HiveField(6)
-  bool notificationsEnabled;
-
-  @HiveField(7)
-  DateTime createdAt;
-
-  @HiveField(8)
-  DateTime updatedAt;
-
-  EventModel({
-    required this.id,
-    required this.title,
-    required this.date,
-    required this.typeIndex,
-    this.notes,
-    required this.reminderIndex,
-    required this.notificationsEnabled,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+  final String id;
+  final String title;
+  final DateTime date;
+  final EventType type;
+  final ReminderOption reminder;
+  final bool notificationsEnabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int reminderHour;
+  final int reminderMinute;
+  final bool isDateYearKnown;
+  final String? notes;
 }
 ```
 
 ## Derived Fields
 
-These values do not need to be stored permanently:
+These are computed, not stored:
 
-- `daysRemaining`
 - `nextOccurrence`
-- `isPast`
-
-They should be computed in domain logic based on current device date.
+- `daysRemaining`
+- `activeCountdown`
+- `reminderDate`
+- `ageOnNextOccurrence`
 
 ## Countdown Rules
 
 ### General Event
 
-- Use the stored date directly.
-- If the date is in the past, mark the event as expired or completed.
+- Uses the stored date directly.
+- If the date is in the past, it is considered completed.
 
 ### Birthday
 
-- Compute the next occurrence using the month and day in the current year.
-- If that date has already passed, use the same month and day in the next year.
+- Uses the next yearly occurrence of the stored month/day.
+- If the stored month/day already passed this year, the next occurrence is in the following year.
+- If the birth year is known, age is derived from `nextOccurrence.year - date.year`.
 
-## Notification Mapping
+## Reminder Rules
 
-- Each event needs at least one deterministic notification ID.
-- Optional reminder notifications should use a second deterministic ID derived from the event ID.
+- If `notificationsEnabled` is false, no reminder is scheduled.
+- If reminders are enabled and no old reminder exists, the UI defaults to `sameDay`.
+- Reminder time defaults to `6:00 AM`.
+- Event-day notifications and lead-time notifications both use the stored reminder time.
 
-Example strategy:
+## Settings Model
 
-```dart
-int eventDayNotificationId(String eventId) => eventId.hashCode;
-int reminderNotificationId(String eventId) => eventId.hashCode ^ 0x7fffffff;
-```
+The current `settings` box stores lightweight preferences such as:
+
+- `theme_mode`
+- `hide_completed_events`
 
 ## Validation Rules
 
-- `title` is required and should be trimmed.
-- `date` is required.
+- `title` is required and trimmed.
 - `type` is required.
-- `notes` is optional.
-- Reminder scheduling is only valid when notifications are enabled.
+- `date` is required.
+- Birthday day/month combinations must remain valid for the selected or effective year.
+- Reminder selection is only meaningful when reminders are enabled.
 
-## Sample Record
+## Sample Records
+
+Birthday with known year:
 
 ```dart
-final birthday = Event(
-  id: 'evt_001',
+final annaBirthday = Event(
+  id: 'evt_anna',
   title: 'Anna Birthday',
   date: DateTime(1995, 7, 18),
   type: EventType.birthday,
-  notes: 'Buy cake',
-  reminder: ReminderOption.oneDayBefore,
+  reminder: ReminderOption.oneWeekBefore,
   notificationsEnabled: true,
+  reminderHour: 6,
+  reminderMinute: 0,
+  isDateYearKnown: true,
+  createdAt: DateTime.now(),
+  updatedAt: DateTime.now(),
+);
+```
+
+Birthday without known year:
+
+```dart
+final chrisBirthday = Event(
+  id: 'evt_chris',
+  title: 'Chris Birthday',
+  date: DateTime(2000, 7, 18), // placeholder internal year
+  type: EventType.birthday,
+  reminder: ReminderOption.sameDay,
+  notificationsEnabled: true,
+  reminderHour: 6,
+  reminderMinute: 0,
+  isDateYearKnown: false,
   createdAt: DateTime.now(),
   updatedAt: DateTime.now(),
 );
@@ -152,6 +168,5 @@ final birthday = Event(
 
 ## Future Enhancements
 
-- Add event color or icon metadata.
-- Add `isArchived` for hiding past one-time events.
-- Add richer recurrence rules if the product expands.
+- Introduce an explicit `MonthDay` value object if birthday-without-year handling becomes more central.
+- Add archived/completed state for general events instead of deriving everything from date.

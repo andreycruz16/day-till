@@ -2,13 +2,13 @@
 
 ## Architecture Style
 
-The app uses clean architecture with three layers:
+The app uses lightweight clean architecture with three layers:
 
 - Presentation
 - Domain
 - Data
 
-This keeps Flutter UI concerns separate from business rules and persistence details, while staying lightweight enough for a POC.
+This keeps Flutter UI code separate from countdown and reminder rules while staying small enough for a POC/MVP codebase.
 
 ## Layer Breakdown
 
@@ -17,110 +17,124 @@ This keeps Flutter UI concerns separate from business rules and persistence deta
 Responsibilities:
 
 - Render screens and widgets
-- Manage UI state
-- Handle user interactions
-- Observe Riverpod providers
+- Manage form state and filter state
+- React to Riverpod providers
+- Trigger save, delete, and settings updates
 
-Main elements:
+Current elements:
 
-- Screens: home, event form, event detail/settings if needed
-- Controllers / notifiers: event list, form state, notification settings
-- Providers for app-facing use cases
+- `EventListScreen`
+- `EventFormScreen`
+- `SettingsScreen`
+- `EventCard`
+- Riverpod providers for event list, list filters, live clock, theme mode, and homepage settings
 
 ### Domain
 
 Responsibilities:
 
-- Define core entities
-- Encapsulate countdown rules
-- Expose use cases and repository contracts
+- Define event entities and reminder options
+- Encapsulate birthday recurrence rules
+- Compute countdown and age-related derived values
+- Expose repository contracts
 
-Main elements:
+Current elements:
 
-- Entities: `Event`, `EventType`, `ReminderOption`
-- Use cases: create event, update event, delete event, watch events, compute countdown
-- Repository interfaces
+- `Event`
+- `EventType`
+- `ReminderOption`
+- `EventRepository`
+- `CountdownService`
 
 ### Data
 
 Responsibilities:
 
-- Persist data in Hive
-- Map Hive models to domain entities
-- Schedule/cancel local notifications
+- Persist events and settings with Hive
+- Convert between Hive models and domain entities
+- Schedule and cancel local notifications
 
-Main elements:
+Current elements:
 
-- Hive boxes and adapters
-- Repository implementations
-- Notification service using `flutter_local_notifications`
+- `EventModel`
+- `EventRepositoryHive`
+- Hive `events` box
+- Hive `settings` box
+- `LocalNotificationService`
 
 ## Flutter-Specific Design
 
-### State Management
+### Riverpod
 
-- Riverpod is used for dependency injection and reactive state updates.
-- `Notifier` or `AsyncNotifier` types manage event list and form workflows.
-- Providers expose repositories and services to the UI layer.
+- `StateNotifierProvider` is used for event list state and persisted settings state.
+- `StreamProvider<DateTime>` supplies a shared clock tick for live countdown updates.
+- Providers are also used for dependency injection of repositories and services.
 
-### Persistence
+### Hive
 
-- Hive is initialized during app startup before the main app shell loads.
-- A single local box is sufficient for the POC, with room to split later if needed.
+- `events` box stores countdown items.
+- `settings` box stores UI preferences such as theme mode and hide completed events.
+- Manual adapters are used instead of code generation to keep the project small.
 
 ### Notifications
 
-- Notification setup is encapsulated in a dedicated local service.
-- Event persistence and notification scheduling are coordinated in the repository or an application service.
-- Notification IDs should be deterministic to support update and cancel flows.
+- Notification scheduling is isolated in `LocalNotificationService`.
+- Deterministic notification IDs support update and cancel flows.
+- Scheduled times are based on the event’s configured reminder time, not a global fixed hour.
 
 ## High-Level Flow
 
-1. User creates or edits an event from the form screen.
-2. Presentation layer validates input and triggers a domain use case.
-3. Domain layer calls repository interfaces.
-4. Data layer writes to Hive and schedules or updates local notifications.
-5. Riverpod providers emit updated state to the UI.
+1. App initializes Hive, registers adapters, opens boxes, and initializes local notifications.
+2. Home screen reads events, settings, and the shared clock provider.
+3. User creates or edits an event in the form screen.
+4. Provider saves the domain entity through the repository.
+5. Repository writes to Hive and schedules/cancels notifications as needed.
+6. Home screen reflects changes immediately through Riverpod state updates.
 
-## Suggested Folder Structure
+## Current Folder Shape
 
 ```text
 lib/
+  app.dart
+  main.dart
   core/
-    utils/
-    services/
+    notifications/
   features/
     events/
-      presentation/
-        screens/
-        widgets/
-        providers/
+      data/
+        models/
+        repositories/
       domain/
         entities/
         repositories/
-        usecases/
-      data/
-        models/
-        datasources/
-        repositories/
+        services/
+      presentation/
+        providers/
+        screens/
+        widgets/
+    settings/
+      presentation/
+        providers/
+        screens/
 ```
 
 ## Startup Sequence
 
 1. Initialize Flutter bindings.
-2. Initialize Hive and register adapters.
-3. Initialize local notifications.
-4. Load app providers.
-5. Render the home screen.
+2. Initialize Hive.
+3. Register event-related adapters.
+4. Open the `events` and `settings` boxes.
+5. Initialize local notifications and request permissions.
+6. Start the app with `ProviderScope`.
 
 ## Risks
 
-- Timezone edge cases may affect reminder timing.
-- Notification reliability differs slightly across Android and iOS.
-- Hive schema changes require careful migration planning.
+- Hive field evolution needs careful backward-compatibility handling.
+- Notification timing can vary by platform and OS policy.
+- Live countdown refreshes must stay lightweight to avoid unnecessary rebuild cost.
 
 ## Future Enhancements
 
-- Separate repositories for events and reminders if complexity grows.
-- Background refresh hooks for date-based UI updates.
-- App-level import/export service for local backups.
+- Extract settings into a dedicated data/domain layer if settings grow beyond a few toggles.
+- Add repository tests around migration cases for older Hive records.
+- Add widget tests for settings-driven homepage behavior.

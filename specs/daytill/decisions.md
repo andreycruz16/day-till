@@ -2,128 +2,124 @@
 
 ## Decision Summary
 
-- Flutter is used for a fast cross-platform mobile POC.
-- Clean architecture is used, but kept intentionally lightweight.
-- Hive, Riverpod, and local notifications are the core technical choices.
-- Birthday recurrence is handled by domain rules instead of a recurrence engine.
-- Countdown values are computed at runtime instead of stored.
+- Flutter is used for a single offline-capable mobile codebase.
+- Clean architecture is used, but in a deliberately lightweight form.
+- Hive persists both events and simple settings.
+- Birthday recurrence is handled by domain rules rather than recurrence infrastructure.
+- Birthdays support unknown year while still preserving month/day countdown behavior.
+- Live countdowns use one shared clock provider instead of per-item timers.
 
-## 1. Use Flutter for a Single Mobile Codebase
-
-### Decision
-
-Build the app in Flutter for Android and iOS from one codebase.
-
-### Rationale
-
-- Fast POC development
-- Consistent UI across platforms
-- Strong plugin ecosystem for Hive, Riverpod, and local notifications
-
-### Tradeoff
-
-- Some notification behavior remains platform-specific
-
-## 2. Use Clean Architecture, Kept Lightweight
+## 1. Keep Architecture Lightweight
 
 ### Decision
 
-Adopt presentation, domain, and data layers without adding excessive abstraction.
+Use presentation, domain, and data layers, but avoid extra use-case classes unless complexity grows.
 
 ### Rationale
 
-- Keeps business logic testable
-- Makes local persistence and notification code easier to isolate
-- Fits future growth without overengineering the POC
+- Matches the size of the app
+- Keeps business rules testable
+- Keeps implementation speed high
 
 ### Tradeoff
 
-- Slightly more setup than a single-layer Flutter app
+- Some responsibilities sit in providers/services instead of more formal application classes
 
-## 3. Use Hive for Local Storage
+## 2. Use Hive for Both Events and Settings
 
 ### Decision
 
-Store events locally in Hive.
+Persist events and basic user preferences locally in Hive.
 
 ### Rationale
 
-- Fast local reads and writes
-- Good Flutter support
-- Simple schema for a small personal dataset
-- Works fully offline
+- One storage technology is enough for the current scope
+- Fast local reads/writes
+- Good fit for fully offline behavior
 
 ### Tradeoff
 
-- Manual schema evolution needs discipline
+- Schema evolution requires manual care
 
-## 4. Use Riverpod for State Management
+## 3. Represent Birthdays with Optional Known Year
 
 ### Decision
 
-Use Riverpod for dependency injection and reactive state.
+Support birthdays where the month/day is known but the birth year is not.
 
 ### Rationale
 
-- Clear provider-based architecture
-- Good testability
-- Scales from simple state to async workflows cleanly
+- Matches real-world usage
+- Preserves birthday countdown usefulness without forcing users to guess a year
 
 ### Tradeoff
 
-- Requires provider discipline and naming consistency
+- Requires an extra boolean flag and UI logic for effective year handling
 
-## 5. Use Local Notifications Only
+## 4. Show Age Only When It Is Safe to Compute
 
 ### Decision
 
-Use `flutter_local_notifications` for on-device reminders.
+Display age for birthdays only when the birth year is known.
 
 ### Rationale
 
-- Matches offline-first requirement
-- No backend cost or operational complexity
-- Sufficient for event-day and pre-event reminders
+- Prevents misleading or fabricated age values
+- Keeps birthday cards more useful when the year is available
 
 ### Tradeoff
 
-- Notifications depend on OS permissions and platform scheduling limits
+- UI must branch between known-year and unknown-year birthday presentation
 
-## 6. Treat Birthdays as Yearly Recurring by Rule, Not by Complex Recurrence Engine
+## 5. Use a Shared Clock Provider for Live Countdowns
 
 ### Decision
 
-Store a single date and compute the next birthday occurrence in domain logic.
+Drive active countdown updates from a single shared Riverpod clock stream.
 
 ### Rationale
 
-- Keeps data model simple
-- Avoids unnecessary recurrence infrastructure
-- Covers the main birthday use case
+- Simpler than per-card timers
+- Reduces duplicated timer logic
+- Keeps the homepage implementation predictable
 
 ### Tradeoff
 
-- Not extensible enough for advanced recurrence patterns without future redesign
+- The list rebuilds on each tick while visible
 
-## 7. Compute Countdown Values Instead of Persisting Them
+## 6. Tie Reminder Scheduling to Event-Level Time
 
 ### Decision
 
-Derive `daysRemaining` and related fields at runtime.
+Store reminder hour and minute per event and use them for both event-day and lead-time notifications.
 
 ### Rationale
 
-- Prevents stale stored values
-- Keeps persistence model minimal
-- Ensures correctness after date changes
+- Gives users control over when reminders appear
+- Avoids a fixed hardcoded schedule across all events
 
 ### Tradeoff
 
-- Requires consistent date calculation logic across screens
+- Adds model and migration complexity
+
+## 7. Persist Simple UI Preferences in Settings
+
+### Decision
+
+Persist dark mode and hide-completed behavior in the `settings` box.
+
+### Rationale
+
+- Settings are part of user experience, not transient session state
+- Simple persistence keeps the app feeling consistent across launches
+
+### Tradeoff
+
+- Settings logic is currently presentation-driven and may need a dedicated module later
 
 ## Future Revisit Triggers
 
-- Need for cloud sync or multi-device support
-- Large datasets that require stronger querying
-- Support for recurring event patterns beyond birthdays
-- Need for backup/export and restore workflows
+- Need for cloud sync or multi-device state
+- Need for richer event recurrence
+- Need for export/import or backup flows
+- Performance issues with very large local event lists

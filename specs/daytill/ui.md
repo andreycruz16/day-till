@@ -2,10 +2,10 @@
 
 ## UI Principles
 
-- Keep the interface minimal and calm.
-- Prioritize countdown visibility over secondary metadata.
-- Make adding and editing events quick.
-- Keep the app understandable for first-time users.
+- Keep the interface compact and readable.
+- Make countdown information scannable first.
+- Keep the event form simple even when handling birthday and reminder edge cases.
+- Use settings for persistent UI preferences instead of overloading the home screen.
 
 ## Main Screens
 
@@ -13,100 +13,89 @@
 
 ### Purpose
 
-Show all saved events and their countdowns.
+Show saved events and birthdays with countdown status.
 
 ### Content
 
 - App bar with app name
-- Primary action button to add an event
-- Scrollable list of countdown cards
-- Empty state when no events exist
+- Settings action
+- Filter chips: `All`, `Birthdays`, `Events`
+- Scrollable list of event cards
+- Floating action button to add an event
 
 ### Card Elements
 
 - Event title
-- Event type badge
-- Event date
-- Days remaining
-- Optional reminder indicator
+- Event type pill
+- Optional reminder bell pill
+- Date or birthday information
+- Next birthday / next occurrence line
+- Age text for birthdays when birth year is known
+- Day-based countdown label
+- Active countdown text
+- Delete action
 
-### Interactions
+### Behavior Notes
 
-- Tap card to edit or view details
-- Swipe or menu action to delete
-- Pull-to-refresh is optional, not required for a local-only app
+- Cards are compact to fit more items on screen.
+- The whole home content scrolls as one surface.
+- The homepage respects the `Hide completed events` setting.
 
 ### 2. Add / Edit Event Screen
 
 ### Purpose
 
-Create a new event or update an existing one.
+Create or update an event with minimal friction.
 
 ### Fields
 
 - Title
-- Date picker
-- Event type selector
+- Event type
+- Month / Day / Year date entry
+- Optional birthday year toggle
 - Notes
-- Notifications toggle
-- Reminder option selector
+- Enable reminders toggle
+- Reminder lead-time selector
+- Reminder time selector
 
-### Actions
+### Birthday-Specific Behavior
 
-- Save
-- Cancel / back
-- Delete when editing an existing event
+- Birthdays are labeled as `Date of birth`.
+- Users can disable `I know the birth year`.
+- If birth year is unknown, the year selector is hidden.
 
-### Validation
+### Reminder Behavior
 
-- Title required
-- Date required
-- Reminder options disabled when notifications are off
+- Enabling reminders defaults the selection to `On event day`.
+- `No reminder` is not shown as an enabled choice.
+- Reminder time defaults to `6:00 AM`.
 
-### 3. Empty State
+### 3. Settings Screen
 
 ### Purpose
 
-Guide first-time users when no events exist.
+Store persistent display and homepage behavior preferences.
 
-### Content
+### Current Options
 
-- Short explanation of what the app does
-- CTA button: `Create your first event`
+- Dark mode
+- Hide completed events
 
 ## Navigation
 
-- Single-stack navigation is sufficient for the POC.
-- Bottom navigation is not needed.
-- Main flow: home -> add/edit -> home.
-
-## UI Behavior Notes
-
-- Countdown value should be visually prominent.
-- Birthdays should be clearly labeled as recurring.
-- Past general events can be styled differently from upcoming events.
-- Save actions should provide immediate visual confirmation by returning to the updated list.
-
-## Suggested Widgets
-
-- `Scaffold`
-- `ListView`
-- `Card` or custom list tile
-- `FloatingActionButton`
-- `TextFormField`
-- `DropdownButtonFormField` or segmented control
-- `SwitchListTile`
-- `showDatePicker`
+- Single-stack navigation
+- Home -> add/edit event
+- Home -> settings
 
 ## Accessibility
 
-- Use readable text sizes and sufficient contrast.
-- Do not rely on color alone to distinguish event types.
-- Ensure tap targets are comfortable on mobile screens.
+- Theme-aware chips and pills should remain readable in light and dark mode.
+- Do not rely on color alone for event type or reminder state.
+- Countdown text should remain readable at compact card sizes.
 
 ## Future Enhancements
 
-- Calendar view
-- Filter chips for birthdays vs general events
-- Theme personalization
-- Widget support for the next upcoming event
+- Search and sort controls
+- Calendar-style overview
+- More granular appearance settings
+- Better empty-state illustrations or onboarding
