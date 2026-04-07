@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../settings/presentation/providers/theme_mode_provider.dart';
+import '../../../smart_add/presentation/screens/smart_add_screen.dart';
 import '../../domain/entities/event.dart';
 import '../../domain/entities/event_type.dart';
 import '../providers/event_list_provider.dart';
@@ -113,10 +114,48 @@ class EventListScreen extends ConsumerWidget {
               ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openForm(context),
+        onPressed: () => _openAddOptions(context),
         icon: const Icon(Icons.add),
-        label: const Text('Add Event'),
+        label: const Text('Add'),
       ),
+    );
+  }
+
+  Future<void> _openAddOptions(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome_outlined),
+                  title: const Text('Smart Add'),
+                  subtitle: const Text(
+                    'Paste anything and let AI draft the event details',
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _openSmartAdd(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Add Manually'),
+                  subtitle: const Text('Fill out the event form yourself'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _openForm(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -124,6 +163,12 @@ class EventListScreen extends ConsumerWidget {
     return Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => EventFormScreen(event: event)));
+  }
+
+  Future<void> _openSmartAdd(BuildContext context) {
+    return Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SmartAddScreen()));
   }
 
   Future<void> _openSettings(BuildContext context) {

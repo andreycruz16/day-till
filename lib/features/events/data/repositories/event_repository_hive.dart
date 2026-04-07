@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
 import '../../../../core/notifications/local_notification_service.dart';
@@ -24,12 +25,22 @@ class EventRepositoryHive implements EventRepository {
   @override
   Future<void> save(Event event) async {
     await _box.put(event.id, EventModel.fromDomain(event));
-    await _notifications.scheduleNotificationsForEvent(event);
+    try {
+      await _notifications.scheduleNotificationsForEvent(event);
+    } catch (error, stackTrace) {
+      debugPrint('Event saved but notification scheduling failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   @override
   Future<void> delete(String eventId) async {
     await _box.delete(eventId);
-    await _notifications.cancelNotificationsForEvent(eventId);
+    try {
+      await _notifications.cancelNotificationsForEvent(eventId);
+    } catch (error, stackTrace) {
+      debugPrint('Event deleted but notification cancellation failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 }

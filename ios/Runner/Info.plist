@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Use the camera to scan photos, posters, tickets, and other event details.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose images from your library so Smart Add can draft event details.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
