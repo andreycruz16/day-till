@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:http/http.dart' as http;
 
 import '../../events/domain/entities/reminder_option.dart';
 import '../../events/domain/entities/event_type.dart';
@@ -25,12 +26,12 @@ class OpenAiEventDraftService {
   OpenAiEventDraftService({
     required this.apiKey,
     required this.model,
-    HttpClient? httpClient,
-  }) : _httpClient = httpClient ?? HttpClient();
+    http.Client? httpClient,
+  }) : _httpClient = httpClient ?? http.Client();
 
   final String? apiKey;
   final String model;
-  final HttpClient _httpClient;
+  final http.Client _httpClient;
 
   Future<EventDraft> createDraft({
     String? sourceText,
@@ -52,25 +53,21 @@ class OpenAiEventDraftService {
 
     late final Map<String, dynamic> decoded;
     try {
-      final request = await _httpClient.postUrl(
+      final response = await _httpClient.post(
         Uri.parse('https://api.openai.com/v1/responses'),
-      );
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
-      request.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
-      request.add(
-        utf8.encode(
-          jsonEncode(
-            _requestBody(
-              sourceText: trimmedSource,
-              image: image,
-              now: DateTime.now(),
-            ),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(
+          _requestBody(
+            sourceText: trimmedSource,
+            image: image,
+            now: DateTime.now(),
           ),
         ),
       );
-
-      final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
+      final responseBody = response.body;
       decoded = responseBody.isEmpty
           ? <String, dynamic>{}
           : jsonDecode(responseBody) as Map<String, dynamic>;
@@ -84,9 +81,13 @@ class OpenAiEventDraftService {
           message ?? 'OpenAI could not create a draft right now.',
         );
       }
-    } on SocketException catch (error) {
+    } on http.ClientException catch (error) {
       throw OpenAiEventDraftException(
         _networkErrorMessage(error),
+      );
+    } on FormatException {
+      throw const OpenAiEventDraftException(
+        'Smart Add received an invalid response while creating the draft.',
       );
     }
 
@@ -534,11 +535,16 @@ Rules:
     return _ReminderTime(hour: hour, minute: minute);
   }
 
-  String _networkErrorMessage(SocketException error) {
+  String _networkErrorMessage(http.ClientException error) {
     final message = error.message.toLowerCase();
     if (message.contains('failed host lookup') ||
         message.contains('no address associated with hostname')) {
       return 'Could not reach OpenAI. Check that your Android device or emulator has internet access and working DNS, then try again.';
+    }
+    if (message.contains('xmlhttprequest') ||
+        message.contains('cors') ||
+        message.contains('fetch')) {
+      return 'Browser request to OpenAI failed. Check your internet connection, confirm browser access is allowed, and try again.';
     }
     return 'Network error while contacting OpenAI. Check your internet connection and try again.';
   }

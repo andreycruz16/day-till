@@ -9,30 +9,19 @@ class EventCard extends StatelessWidget {
   const EventCard({
     super.key,
     required this.event,
-    required this.daysRemaining,
-    required this.activeCountdown,
     required this.nextOccurrence,
     required this.onTap,
     required this.onDelete,
   });
 
   final Event event;
-  final int daysRemaining;
-  final String activeCountdown;
   final DateTime nextOccurrence;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final isPast = daysRemaining < 0;
     final nextAge = event.ageOnNextOccurrence();
-    final countdownLabel = switch (daysRemaining) {
-      0 => 'Today',
-      1 => 'Tomorrow',
-      _ when daysRemaining < 0 => '${daysRemaining.abs()} days ago',
-      _ => '$daysRemaining days',
-    };
     final primaryDateLabel = switch (event.type) {
       EventType.birthday =>
         event.isDateYearKnown
@@ -120,30 +109,6 @@ class EventCard extends StatelessWidget {
                       minHeight: 28,
                     ),
                     icon: const Icon(Icons.delete_outline_rounded),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    countdownLabel,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: isPast
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    activeCountdown,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isPast ? 'Completed' : 'Remaining',
-                    style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ],
               ),

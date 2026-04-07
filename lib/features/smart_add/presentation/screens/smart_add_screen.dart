@@ -1,6 +1,7 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart' as image_picker;
@@ -127,15 +128,7 @@ class _SmartAddScreenState extends ConsumerState<SmartAddScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Theme.of(context).colorScheme.surfaceContainer,
-                        ),
-                        child: const Icon(Icons.image_outlined),
-                      ),
+                      _SelectedImagePreview(image: _selectedImage!),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -252,28 +245,46 @@ class _SmartAddScreenState extends ConsumerState<SmartAddScreen> {
   }
 
   Future<void> _pickFromGallery() async {
-    final image = Platform.isMacOS
-        ? await openFile(acceptedTypeGroups: const [_imageTypeGroup])
-        : await _imagePicker.pickImage(
-            source: image_picker.ImageSource.gallery,
-          );
-    if (image != null && mounted) {
-      setState(() {
-        _selectedImage = image;
-        _errorMessage = null;
-      });
+    try {
+      final image = _useDesktopFileSelector
+          ? await openFile(acceptedTypeGroups: const [_imageTypeGroup])
+          : await _imagePicker.pickImage(
+              source: image_picker.ImageSource.gallery,
+            );
+      if (image != null && mounted) {
+        setState(() {
+          _selectedImage = image;
+          _errorMessage = null;
+        });
+      }
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
   Future<void> _captureFromCamera() async {
-    final image = await _imagePicker.pickImage(
-      source: image_picker.ImageSource.camera,
-    );
-    if (image != null && mounted) {
-      setState(() {
-        _selectedImage = image;
-        _errorMessage = null;
-      });
+    try {
+      final image = await _imagePicker.pickImage(
+        source: image_picker.ImageSource.camera,
+      );
+      if (image != null && mounted) {
+        setState(() {
+          _selectedImage = image;
+          _errorMessage = null;
+        });
+      }
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -290,9 +301,74 @@ class _SmartAddScreenState extends ConsumerState<SmartAddScreen> {
     }
     return 'image/jpeg';
   }
+
+  bool get _useDesktopFileSelector =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 }
 
 const XTypeGroup _imageTypeGroup = XTypeGroup(
   label: 'images',
   extensions: <String>['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'],
 );
+
+class _SelectedImagePreview extends StatelessWidget {
+  const _SelectedImagePreview({required this.image});
+
+  final XFile image;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: FutureBuilder<Uint8List>(
+          future: image.readAsBytes(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return Image.memory(
+                snapshot.data!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _ImagePreviewFallback(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return _ImagePreviewFallback(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+              );
+            }
+
+            return ColoredBox(
+              color: Theme.of(context).colorScheme.surfaceContainer,
+              child: const Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ImagePreviewFallback extends StatelessWidget {
+  const _ImagePreviewFallback({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: color,
+      child: const Center(child: Icon(Icons.image_outlined)),
+    );
+  }
+}
