@@ -93,6 +93,10 @@ class EventListScreen extends ConsumerWidget {
                           final event = filteredEvents[index];
                           return EventCard(
                             event: event,
+                            daysRemaining: countdownService.daysRemaining(
+                              event,
+                              now,
+                            ),
                             nextOccurrence: countdownService.nextOccurrence(
                               event,
                               now,

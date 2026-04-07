@@ -545,7 +545,7 @@ class _DraftReviewCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               for (final warning in draft.warnings) ...[
-                Text('\u2022 $warning'),
+                Text('\u2022 ${_humanizeDraftWarning(warning)}'),
                 const SizedBox(height: 4),
               ],
             ],
@@ -553,5 +553,39 @@ class _DraftReviewCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _humanizeDraftWarning(String warning) {
+    var result = warning.trim();
+    if (result.isEmpty) {
+      return warning;
+    }
+
+    const replacements = <String, String>{
+      'is_date_year_known': 'whether the year is known',
+      'date_iso': 'date',
+      'event_type': 'event type',
+      'notifications_enabled': 'notifications',
+      'reminder_option': 'reminder option',
+      'reminder_time_24h': 'reminder time',
+      'source_text': 'source text',
+      'eventName': 'event name',
+      'ticketNumber': 'ticket number',
+    };
+
+    replacements.forEach((pattern, replacement) {
+      result = result.replaceAll(pattern, replacement);
+    });
+
+    result = result.replaceAllMapped(
+      RegExp(r'\b[a-z]+_[a-z0-9_]+\b'),
+      (match) => match.group(0)!.replaceAll('_', ' '),
+    );
+
+    if (result.isNotEmpty) {
+      result = '${result[0].toUpperCase()}${result.substring(1)}';
+    }
+
+    return result;
   }
 }
